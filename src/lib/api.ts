@@ -12,6 +12,7 @@ import {
 import { db } from './firebase';
 
 const VITE_API_BASE = (import.meta as any).env?.VITE_API_BASE || '';
+
 // Default seed data for Firestore initial seeding
 const DEFAULT_PLANTS: Plant[] = [
   { id: 1, code: "辣椒 #01", name: "辣椒 #01", claimed: true, ownerName: "张伟", owners: ["张伟"], primaryDept: "技术部办公区", location: "技术部办公区", status: "生长期", health: "茁壮成长", plantedDate: "2026-08-01", avatar: "https://images.unsplash.com/photo-1591857177580-dc82b9ac4e1e?w=500&auto=format&fit=crop&q=80", initialAvatar: "https://images.unsplash.com/photo-1591857177580-dc82b9ac4e1e?w=500&auto=format&fit=crop&q=80", careCount: 12, lastWateredAt: "2026-08-12T05:40:57.951Z", lastFertilizedAt: "2026-08-10T09:40:57.951Z", lastCareAt: "2026-08-12T05:40:57.951Z", notes: "一号朝天椒长势迅猛，顶端已经冒出第二对真叶！" },
@@ -65,22 +66,13 @@ const DEFAULT_CONFIG: SystemConfig = {
   fertilizers: COMMON_FERTILIZERS
 };
 
-// Network URL helper for background Express calls if needed
+// Network URL helper — uses same-domain relative path on Cloudflare Pages
 function getUrl(url: string): string {
   if (url.startsWith('/')) {
     if (VITE_API_BASE) {
       return `${VITE_API_BASE}${url}`;
     }
     return url;
-  }
-  return url;
-}${url}`;
-    if (typeof window !== 'undefined') {
-      const host = window.location.hostname;
-      if (host.includes('pages.dev') || host.includes('cloudflare') || (!host.includes('localhost') && !host.includes('run.app') && !host.includes('127.0.0.1'))) {
-        return `${CLOUD_RUN_BACKEND}${url}`;
-      }
-    }
   }
   return url;
 }
