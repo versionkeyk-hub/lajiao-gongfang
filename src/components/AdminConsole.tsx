@@ -56,6 +56,9 @@ import {
   adminCreateCareLog,
   adminUpdateCareLog,
   adminDeleteCareLog,
+  adminRestoreCareLog,
+  adminDeleteCareLogPermanently,
+  deleteComment,
   addOrUpdateActionType,
   deleteActionType,
   updateSystemConfig
@@ -390,14 +393,38 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   };
 
   const handleDeleteLog = async (logId: string) => {
-    if (!window.confirm('确定要删除这条养护日志吗？删除后不可恢复。')) return;
+    if (!window.confirm('确定要删除这条养护日志吗？删除后将移入已隐藏/回收站列表。')) return;
     try {
       await adminDeleteCareLog(logId);
-      alert('已成功删除日志');
+      alert('已成功移入已删动态回收站');
       loadAllLogs();
       onRefreshData();
     } catch (err: any) {
       alert(err.message || '删除失败');
+    }
+  };
+
+  const handleRestoreLog = async (logId: string) => {
+    if (!window.confirm('确定要恢复这条养护日志吗？恢复后将重新展示。')) return;
+    try {
+      await adminRestoreCareLog(logId);
+      alert('已成功恢复动态');
+      loadAllLogs();
+      onRefreshData();
+    } catch (err: any) {
+      alert(err.message || '恢复失败');
+    }
+  };
+
+  const handlePermanentDeleteLog = async (logId: string) => {
+    if (!window.confirm('⚠️ 警告：彻底删除后数据不可恢复！确定要彻底摧毁此动态吗？')) return;
+    try {
+      await adminDeleteCareLogPermanently(logId);
+      alert('已彻底删除动态');
+      loadAllLogs();
+      onRefreshData();
+    } catch (err: any) {
+      alert(err.message || '彻底删除失败');
     }
   };
 
@@ -1131,7 +1158,9 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                   {logs
                     .filter(l => !searchFieldKeyword || l.userName.includes(searchFieldKeyword) || l.actionType.includes(searchFieldKeyword) || (l.notes && l.notes.includes(searchFieldKeyword)))
                     .map(log => (
-                      <div key={log.id} className="bg-gray-50/80 rounded-2xl p-3.5 border border-gray-200/80 hover:border-emerald-300 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div key={log.id} className={`rounded-2xl p-3.5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                        log.isDeleted ? 'bg-rose-50/50 border-rose-200' : 'bg-gray-50/80 border-gray-200/80 hover:border-emerald-300'
+                      }`}>
                         <div className="flex items-start gap-3">
                           <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-lg shrink-0 font-bold">
                             {log.actionIcon || '💧'}
@@ -1142,6 +1171,11 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                               <span className="bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">
                                 {log.actionType}
                               </span>
+                              {log.isDeleted && (
+                                <span className="bg-rose-100 text-rose-800 text-[10px] px-2 py-0.5 rounded-full font-bold border border-rose-200">
+                                  ⚠️ 已软删除/前台隐藏
+                                </span>
+                              )}
                               {log.waterVolume && (
                                 <span className="bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded-full font-bold">
                                   💧 {log.waterVolume}
@@ -1184,12 +1218,34 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                             <Edit3 className="w-3.5 h-3.5" />
                             修改全字段
                           </button>
-                          <button
-                            onClick={() => handleDeleteLog(log.id)}
-                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold px-2.5 py-1.5 rounded-xl transition-all"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {!log.isDeleted ? (
+                            <button
+                              onClick={() => handleDeleteLog(log.id)}
+                              className="bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold px-2.5 py-1.5 rounded-xl transition-all"
+                              title="软删除移入回收站"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handleRestoreLog(log.id)}
+                                className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1"
+                                title="恢复日志"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                恢复
+                              </button>
+                              <button
+                                onClick={() => handlePermanentDeleteLog(log.id)}
+                                className="bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-bold px-2.5 py-1.5 rounded-xl transition-all flex items-center gap-1"
+                                title="彻底物理删除"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                彻底删除
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     ))}
