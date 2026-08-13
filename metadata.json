@@ -1,0 +1,6 @@
+{
+  "name": "小蛙种植记（内部自用）",
+  "description": "小蛙种植记（内部自用），记录植物生长动态、养护流水账与互动积分。",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
