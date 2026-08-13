@@ -14,6 +14,7 @@ interface CareLogModalProps {
   defaultActionType?: string;
   onPreviewImage?: (url: string, title?: string) => void;
   actionTypesConfig?: SystemActionTypeConfig[];
+  onGoToClaimPlants?: () => void;
 }
 
 export const CareLogModal: React.FC<CareLogModalProps> = ({
@@ -26,9 +27,16 @@ export const CareLogModal: React.FC<CareLogModalProps> = ({
   defaultActionType,
   onPreviewImage,
   actionTypesConfig,
+  onGoToClaimPlants,
 }) => {
   const safePlants = Array.isArray(plants) ? plants.filter(Boolean) : [];
-  const [selectedMainPlantId, setSelectedMainPlantId] = useState<number>(defaultPlantId || currentUser?.plantIds?.[0] || 1);
+  const isEffectiveAdmin = Boolean(currentUser?.isAdmin || currentUser?.name?.trim().toLowerCase() === 'admin');
+  const userOwnedPlants = safePlants.filter(p => p && (p.ownerName === currentUser?.name || (Array.isArray(p.owners) && p.owners.includes(currentUser?.name || ''))));
+  const availablePlantsForSelect = isEffectiveAdmin ? safePlants : userOwnedPlants;
+
+  const [selectedMainPlantId, setSelectedMainPlantId] = useState<number>(() => {
+    return defaultPlantId || userOwnedPlants[0]?.id || safePlants[0]?.id || 1;
+  });
   const [coCaredPlantIds, setCoCaredPlantIds] = useState<number[]>([]);
   const [actionType, setActionType] = useState<ActionType>(defaultActionType || '浇水');
   
@@ -44,8 +52,8 @@ export const CareLogModal: React.FC<CareLogModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       const currentSafePlants = Array.isArray(plants) ? plants.filter(Boolean) : [];
-      const myFirstPlant = currentSafePlants.find(p => p && (p.ownerName === currentUser?.name || (Array.isArray(p.owners) && p.owners.includes(currentUser?.name || ''))));
-      const targetId = defaultPlantId || myFirstPlant?.id || currentUser?.plantIds?.[0] || currentSafePlants[0]?.id || 1;
+      const myOwned = currentSafePlants.filter(p => p && (p.ownerName === currentUser?.name || (Array.isArray(p.owners) && p.owners.includes(currentUser?.name || ''))));
+      const targetId = defaultPlantId || myOwned[0]?.id || (isEffectiveAdmin ? currentSafePlants[0]?.id : undefined) || 1;
       setSelectedMainPlantId(targetId);
       if (defaultActionType) {
         setActionType(defaultActionType);
@@ -60,7 +68,7 @@ export const CareLogModal: React.FC<CareLogModalProps> = ({
       setPhoto(null);
       setNotes('');
     }
-  }, [isOpen, defaultPlantId, defaultActionType, currentUser?.name]);
+  }, [isOpen, defaultPlantId, defaultActionType, currentUser?.name, isEffectiveAdmin]);
 
   useEffect(() => {
     if (isOpen) {
@@ -207,6 +215,51 @@ export const CareLogModal: React.FC<CareLogModalProps> = ({
     }
   };
 
+  if (!isEffectiveAdmin && userOwnedPlants.length === 0) {
+    return (
+      <div
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 touch-none"
+        onClick={onClose}
+      >
+        <div
+          className="bg-white rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl border border-amber-100 animate-in zoom-in duration-200"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="w-14 h-14 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-2xl font-bold shadow-inner">
+            🪴
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="font-bold text-gray-900 text-base">您尚未认领任何辣椒植株</h3>
+            <p className="text-xs text-gray-500 leading-relaxed px-2">
+              当前登录账号【<span className="font-bold text-emerald-700">{currentUser?.name}</span>】尚未绑定认领任何辣椒植株。
+              <br /><br />
+              为了确保护理与积分记录归属清晰，请先认领属于您的辣椒后再进行养护打卡！
+            </p>
+          </div>
+          <div className="pt-2 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                if (onGoToClaimPlants) onGoToClaimPlants();
+              }}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 rounded-xl shadow-md shadow-emerald-200 transition-all flex items-center justify-center gap-1.5"
+            >
+              🌱 前往【认领植物】列表
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium text-xs py-2.5 rounded-xl transition-all"
+            >
+              返回
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 touch-none"
@@ -249,13 +302,13 @@ export const CareLogModal: React.FC<CareLogModalProps> = ({
               }}
               className="w-full bg-gray-50 border border-gray-200 focus:border-emerald-500 focus:bg-white rounded-xl px-3.5 py-2.5 text-xs text-gray-900 font-bold outline-none transition-all"
             >
-              {safePlants.map(p => (
+              {availablePlantsForSelect.map(p => (
                 <option key={p.id} value={p.id}>
                   {p.code} ({p.ownerName ? `认领人: ${p.ownerName}` : '待领用'}) - 养在: {p.location}
                 </option>
               ))}
-              {safePlants.length === 0 && (
-                <option value={1}>1号盆 (暂无植株数据)</option>
+              {availablePlantsForSelect.length === 0 && (
+                <option value={1}>暂无可用植株</option>
               )}
             </select>
           </div>
