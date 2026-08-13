@@ -120,9 +120,11 @@ export const MyProfileTab: React.FC<MyProfileTabProps> = ({
 
   // Filter logs for current user OR current user's plants
   const myLogs = logs.filter(l => 
-    (currentUser?.name && (l.userName === currentUser.name || l.userName?.trim() === currentUser.name.trim())) ||
-    (currentUser?.id && l.userId === currentUser.id) ||
-    (l.plantIds && l.plantIds.some(pid => myPlantIds.includes(pid)))
+    !l.isDeleted && (
+      (currentUser?.name && (l.userName === currentUser.name || l.userName?.trim() === currentUser.name.trim())) ||
+      (currentUser?.id && l.userId === currentUser.id) ||
+      (l.plantIds && l.plantIds.some(pid => myPlantIds.includes(pid)))
+    )
   );
 
   // Count logs specifically published by this user
