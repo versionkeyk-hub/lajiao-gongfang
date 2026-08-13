@@ -65,6 +65,7 @@ export interface CareLog {
   createdAt: string;
   likes: { userName: string; createdAt: string }[];
   comments: { id: string; userName: string; text: string; createdAt: string }[];
+  isDeleted?: boolean;
 }
 
 export interface UserProfile {
