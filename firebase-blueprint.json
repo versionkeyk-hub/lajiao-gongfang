@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "plants": {
+      "title": "Plants",
+      "description": "Pepper plants collection",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "code": { "type": "string" },
+        "name": { "type": "string" },
+        "claimed": { "type": "boolean" },
+        "ownerName": { "type": "string" },
+        "owners": { "type": "array", "items": { "type": "string" } },
+        "primaryDept": { "type": "string" },
+        "location": { "type": "string" },
+        "status": { "type": "string" },
+        "health": { "type": "string" },
+        "plantedDate": { "type": "string" },
+        "avatar": { "type": "string" },
+        "initialAvatar": { "type": "string" },
+        "careCount": { "type": "number" },
+        "lastWateredAt": { "type": "string" },
+        "lastFertilizedAt": { "type": "string" },
+        "lastCareAt": { "type": "string" },
+        "notes": { "type": "string" },
+        "isDeleted": { "type": "boolean" }
+      },
+      "required": ["id", "code", "name"]
+    },
+    "logs": {
+      "title": "Care Logs",
+      "description": "Pepper care activity logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "plantIds": { "type": "array", "items": { "type": "number" } },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userDept": { "type": "string" },
+        "userLocation": { "type": "string" },
+        "userAvatar": { "type": "string" },
+        "actionType": { "type": "string" },
+        "actionIcon": { "type": "string" },
+        "fertilizerName": { "type": "string" },
+        "fertilizerConcentration": { "type": "string" },
+        "locationNew": { "type": "string" },
+        "waterVolume": { "type": "string" },
+        "photo": { "type": "string" },
+        "notes": { "type": "string" },
+        "helpedColleagues": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string" },
+        "likes": { "type": "array" },
+        "comments": { "type": "array" }
+      },
+      "required": ["id", "userName", "actionType", "createdAt"]
+    },
+    "users": {
+      "title": "Users",
+      "description": "User profiles and credentials",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "password": { "type": "string" },
+        "dept": { "type": "string" },
+        "location": { "type": "string" },
+        "avatar": { "type": "string" },
+        "plantIds": { "type": "array", "items": { "type": "number" } },
+        "isAdmin": { "type": "boolean" },
+        "isBanned": { "type": "boolean" },
+        "registeredAt": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "config": {
+      "title": "Config",
+      "description": "Global application configuration",
+      "type": "object"
+    },
+    "recycle": {
+      "title": "Recycle Bin",
+      "description": "Deleted plants",
+      "type": "object"
+    }
+  }
+}
