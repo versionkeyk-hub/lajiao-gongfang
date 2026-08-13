@@ -11,6 +11,9 @@
 
 set -e
 
+# 出错时显示错误信息，而不是直接退出
+trap 'echo ""; echo -e "\033[0;31m❌ 部署出错！请截图这段错误信息。错误发生在第 $LINENO 行\033[0m"; read -p "按回车键退出..."' ERR
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -37,24 +40,65 @@ if ! command -v node &> /dev/null; then
 fi
 
 # ─── 查找下载的 zip 文件 ───
-DOWNLOADS_DIR="$HOME/Downloads"
+# 搜索多个可能的下载目录（iCloud Edge下载、标准下载文件夹等）
+SEARCH_DIRS=(
+    "$HOME/Library/Mobile Documents/com~apple~CloudDocs/惠民皓天/Edge下载"
+    "$HOME/Downloads"
+    "$HOME/Library/Mobile Documents/com~apple~CloudDocs/惠民皓天/Edge下载"
+)
+
+# 动态查找 iCloud 中所有 "Edge下载" 目录（路径可能有变化）
+ICLOUD_BASE="$HOME/Library/Mobile Documents/com~apple~CloudDocs"
+if [ -d "$ICLOUD_BASE" ]; then
+    while IFS= read -r -d '' edge_dir; do
+        # 避免重复添加
+        already_added=false
+        for d in "${SEARCH_DIRS[@]}"; do
+            if [ "$d" == "$edge_dir" ]; then
+                already_added=true
+                break
+            fi
+        done
+        if [ "$already_added" == "false" ]; then
+            SEARCH_DIRS+=("$edge_dir")
+        fi
+    done < <(find "$ICLOUD_BASE" -maxdepth 3 -type d -name "*Edge下载*" -print0 2>/dev/null)
+fi
+
 echo -e "${CYAN}正在查找下载的代码包...${NC}"
 echo ""
 
-# 找最近的包含"辣椒"的 zip 文件
+# 在所有搜索目录中找最近的包含"辣椒"的 zip 文件
+# 注意：不用 ls | for（空格会拆断文件名），改用 glob + 按时间比较
 ZIP_FILE=""
-for f in $(ls -t "$DOWNLOADS_DIR"/*辣椒* 2>/dev/null || true); do
-    if [[ "$f" == *.zip ]]; then
-        ZIP_FILE="$f"
-        break
+ZIP_TIME_NEWEST=0
+for dir in "${SEARCH_DIRS[@]}"; do
+    if [ -d "$dir" ]; then
+        for f in "$dir"/*辣椒*.zip; do
+            [ -f "$f" ] || continue
+            # 获取文件修改时间戳（秒）
+            f_epoch=$(stat -f "%m" "$f" 2>/dev/null || echo 0)
+            if [ "$f_epoch" -gt "$ZIP_TIME_NEWEST" ]; then
+                ZIP_TIME_NEWEST=$f_epoch
+                ZIP_FILE="$f"
+            fi
+        done
     fi
 done
 
-# 如果没找到带"辣椒"的，找最近的 zip
+# 如果没找到带"辣椒"的，找最近的所有 zip
 if [ -z "$ZIP_FILE" ]; then
-    for f in $(ls -t "$DOWNLOADS_DIR"/*.zip 2>/dev/null || true); do
-        ZIP_FILE="$f"
-        break
+    for dir in "${SEARCH_DIRS[@]}"; do
+        if [ -d "$dir" ]; then
+            for f in "$dir"/*.zip; do
+                [ -f "$f" ] || continue
+                f_epoch=$(stat -f "%m" "$f" 2>/dev/null || echo 0)
+                if [ "$f_epoch" -gt "$ZIP_TIME_NEWEST" ]; then
+                    ZIP_TIME_NEWEST=$f_epoch
+                    ZIP_FILE="$f"
+                fi
+            done
+        fi
     done
 fi
 
