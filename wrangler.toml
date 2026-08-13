@@ -3,10 +3,11 @@ pages_build_output_dir = "dist"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
-# R2 bucket for cloud data storage (user data shared across all users)
-[[r2_buckets]]
+# D1 database for cloud data storage (plants, logs, users, config)
+[[d1_databases]]
 binding = "DB"
-bucket_name = "lajiao-db"
+database_name = "chili-db"
+database_id = "bf907dfe-b06c-4977-9310-e2451a5b9511"
 
 # R2 bucket for image uploads
 [[r2_buckets]]
