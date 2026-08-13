@@ -51,6 +51,68 @@ else
     echo -e "${GREEN}✓${NC} 依赖已就绪"
 fi
 
+# ─── 同步代码到 GitHub ───
+echo ""
+echo -e "${CYAN}━━━ 同步代码到 GitHub ━━━${NC}"
+GH_TOKEN="$(grep GH_TOKEN .cloudflare.env 2>/dev/null | cut -d'"' -f2)"
+if [ -z "$GH_TOKEN" ]; then
+    echo -e "${YELLOW}  跳过 GitHub 同步（.cloudflare.env 中没有 GH_TOKEN）${NC}"
+else
+    /usr/bin/python3 << 'GITHUB_SYNC'
+import os, json, base64, urllib.request, urllib.parse
+
+token = os.popen("grep GH_TOKEN .cloudflare.env | cut -d'\"' -f2").read().strip()
+owner = "versionkeyk-hub"
+repo = "lajiao-gongfang"
+api = "https://api.github.com"
+
+def api_call(url, method="GET", data=None):
+    headers = {
+        "Authorization": f"token {token}",
+        "Content-Type": "application/json",
+        "Accept": "application/vnd.github+json"
+    }
+    body = json.dumps(data).encode() if data else None
+    req = urllib.request.Request(url, data=body, headers=headers, method=method)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return json.loads(resp.read().decode())
+    except Exception as e:
+        return {"error": str(e)}
+
+skip = {"node_modules", "dist", ".git", ".workbuddy", ".cloudflare-backup"}
+files = []
+for root, dirs, fnames in os.walk("."):
+    dirs[:] = [d for d in dirs if d not in skip and not d.startswith(".")]
+    for f in fnames:
+        if f == ".cloudflare.env":
+            continue
+        fp = os.path.join(root, f)
+        rel = os.path.relpath(fp, ".").replace("\\", "/")
+        files.append(rel)
+
+count = 0
+for f in files:
+    content = open(f, "rb").read()
+    b64 = base64.b64encode(content).decode()
+    existing = api_call(f"{api}/repos/{owner}/{repo}/contents/{urllib.parse.quote(f)}")
+    sha = existing.get("sha") if "sha" in existing else None
+    payload = {"message": f"Update {f}", "content": b64}
+    if sha:
+        payload["sha"] = sha
+    result = api_call(f"{api}/repos/{owner}/{repo}/contents/{urllib.parse.quote(f)}", "PUT", payload)
+    if result.get("commit"):
+        count += 1
+    else:
+        result2 = api_call(f"{api}/repos/{owner}/{repo}/contents/{urllib.parse.quote(f)}", "PUT", {"message": f"Add {f}", "content": b64})
+        if result2.get("commit"):
+            count += 1
+
+print(f"  GitHub: {count}/{len(files)} files synced")
+GITHUB_SYNC
+    echo -e "${GREEN}✓${NC} GitHub 同步完成"
+fi
+
 # ─── 第 1 步：清理旧构建 + 构建前端 + 打包后端 ───
 echo ""
 echo -e "${CYAN}━━━ 第 0 步：清理旧构建 ━━━${NC}"
@@ -81,6 +143,8 @@ echo "============================================"
 echo ""
 echo "  🌐 线上地址："
 echo "  https://lajiao-gongfang.pages.dev"
+echo "  📦 GitHub 仓库："
+echo "  https://github.com/versionkeyk-hub/lajiao-gongfang"
 echo ""
 
 # ─── 打开浏览器 ───
