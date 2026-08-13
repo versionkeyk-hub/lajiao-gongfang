@@ -2,6 +2,8 @@ node_modules/
 dist/
 .env
 .env.local
+.cloudflare.env
 *.log
 .DS_Store
 server.cjs
+.wrangler/
