@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Heart, MessageSquare, Sparkles, Search, MapPin, Droplets } from 'lucide-react';
-import { CareLog, Plant, SystemActionTypeConfig } from '../types';
-import { toggleLike, addComment } from '../lib/api';
+import { Heart, MessageSquare, Sparkles, Search, MapPin, Droplets, Trash2, RotateCcw, Eye, EyeOff } from 'lucide-react';
+import { CareLog, Plant, SystemActionTypeConfig, UserProfile } from '../types';
+import { toggleLike, addComment, softDeleteCareLog, adminRestoreCareLog, adminDeleteCareLogPermanently, deleteComment } from '../lib/api';
 
 interface TimelineFeedProps {
   logs: CareLog[];
   plants: Plant[];
   currentUserName: string;
+  currentUser?: UserProfile | null;
   onRefresh: () => void;
   onOpenPlantDetail: (plantId: number) => void;
   onQuickLog: (plantId?: number) => void;
@@ -18,6 +19,7 @@ export const TimelineFeed: React.FC<TimelineFeedProps> = ({
   logs,
   plants,
   currentUserName,
+  currentUser,
   onRefresh,
   onOpenPlantDetail,
   onQuickLog,
@@ -30,6 +32,10 @@ export const TimelineFeed: React.FC<TimelineFeedProps> = ({
   const [expandedCommentLogId, setExpandedCommentLogId] = useState<string | null>(null);
   const [commentInput, setCommentInput] = useState('');
   const [activePhotoModal, setActivePhotoModal] = useState<string | null>(null);
+  const [showDeletedLogs, setShowDeletedLogs] = useState(false);
+
+  const isAdmin = Boolean(currentUser?.isAdmin || currentUserName?.trim().toLowerCase() === 'admin');
+  const visibleDeletedLogsCount = logs.filter(l => l.isDeleted && (isAdmin || (currentUserName && l.userName === currentUserName))).length;
 
   const defaultCategories = ['全部', '浇水', '施肥', '叶面肥', '松土培土', '打药防虫', '打顶剪枝', '位置变更', '成长拍照', '日光照射', '除草清理', '换盆翻土', '采摘收获', '人工授粉', '互助照顾', '所有权转移'];
   const actionCategories = (() => {
@@ -43,6 +49,13 @@ export const TimelineFeed: React.FC<TimelineFeedProps> = ({
   })();
 
   const filteredLogs = logs.filter(log => {
+    if (showDeletedLogs) {
+      if (!log.isDeleted) return false;
+      if (!isAdmin && log.userName !== currentUserName) return false;
+    } else {
+      if (log.isDeleted) return false;
+    }
+
     if (selectedActionFilter !== '全部' && log.actionType !== selectedActionFilter) return false;
     if (selectedPlantFilter !== 'ALL') {
       const targetPlant = plants.find(p => p.id === selectedPlantFilter);
@@ -81,6 +94,49 @@ export const TimelineFeed: React.FC<TimelineFeedProps> = ({
     await addComment(logId, currentUserName, commentInput.trim());
     setCommentInput('');
     onRefresh();
+  };
+
+  const handleDeleteComment = async (logId: string, commentId: string) => {
+    if (!window.confirm('确定要删除此条评论吗？')) return;
+    try {
+      await deleteComment(logId, commentId);
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || '删除评论失败');
+    }
+  };
+
+  const handleSoftDeleteLog = async (logId: string, isSelf = false) => {
+    const promptMsg = isSelf
+      ? '确定要隐藏/删除您发布的此条动态吗？删除后将移入“已删动态”，您可以随时恢复。'
+      : '确定要删除此条动态吗？删除后移入已删动态回收站，支持随时恢复。';
+    if (!window.confirm(promptMsg)) return;
+    try {
+      await softDeleteCareLog(logId, true);
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || '删除动态失败');
+    }
+  };
+
+  const handleRestoreLog = async (logId: string) => {
+    if (!window.confirm('确定要恢复此条动态吗？恢复后将重新对所有成员展示。')) return;
+    try {
+      await adminRestoreCareLog(logId);
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || '恢复动态失败');
+    }
+  };
+
+  const handlePermanentDeleteLog = async (logId: string) => {
+    if (!window.confirm('⚠️ 警告：彻底删除后数据不可恢复！确定要彻底删除此条动态吗？')) return;
+    try {
+      await adminDeleteCareLogPermanently(logId);
+      onRefresh();
+    } catch (err: any) {
+      alert(err.message || '永久删除失败');
+    }
   };
 
   const formatRelativeTime = (isoString: string) => {
@@ -122,21 +178,37 @@ export const TimelineFeed: React.FC<TimelineFeedProps> = ({
           </select>
         </div>
 
-        {/* Action filter pill tags */}
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-          {actionCategories.map(cat => (
+        {/* Admin Deleted Toggle & Action Filter */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1">
+            {actionCategories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setSelectedActionFilter(cat)}
+                className={`text-xs px-3 py-1.5 rounded-xl font-medium whitespace-nowrap transition-all ${
+                  selectedActionFilter === cat
+                    ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-200'
+                    : 'bg-gray-100 text-gray-600 hover:bg-emerald-50 hover:text-emerald-700'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {(isAdmin || visibleDeletedLogsCount > 0) && (
             <button
-              key={cat}
-              onClick={() => setSelectedActionFilter(cat)}
-              className={`text-xs px-3 py-1.5 rounded-xl font-medium whitespace-nowrap transition-all ${
-                selectedActionFilter === cat
-                  ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-200'
-                  : 'bg-gray-100 text-gray-600 hover:bg-emerald-50 hover:text-emerald-700'
+              onClick={() => setShowDeletedLogs(!showDeletedLogs)}
+              className={`text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 transition-all shrink-0 ${
+                showDeletedLogs 
+                  ? 'bg-rose-600 text-white shadow-xs' 
+                  : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
               }`}
             >
-              {cat}
+              {showDeletedLogs ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              <span>{showDeletedLogs ? '返回正常动态' : `查看已删动态 (${visibleDeletedLogsCount})`}</span>
             </button>
-          ))}
+          )}
         </div>
       </div>
 
@@ -144,15 +216,19 @@ export const TimelineFeed: React.FC<TimelineFeedProps> = ({
       {filteredLogs.length === 0 ? (
         <div className="bg-white rounded-3xl p-8 text-center border border-emerald-100 shadow-sm space-y-3">
           <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto text-xl">
-            🌱
+            {showDeletedLogs ? '🗑️' : '🌱'}
           </div>
-          <p className="text-xs text-gray-500 font-medium">暂无相关动态记录，快抢先记录第一笔吧！</p>
-          <button
-            onClick={() => onQuickLog()}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-md transition-all inline-flex items-center gap-1.5"
-          >
-            ➕ 我来记一笔
-          </button>
+          <p className="text-xs text-gray-500 font-medium">
+            {showDeletedLogs ? '当前暂无已被删除的动态记录' : '暂无相关动态记录，快抢先记录第一笔吧！'}
+          </p>
+          {!showDeletedLogs && (
+            <button
+              onClick={() => onQuickLog()}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-md transition-all inline-flex items-center gap-1.5"
+            >
+              ➕ 我来记一笔
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-6 sm:space-y-7">
@@ -163,8 +239,27 @@ export const TimelineFeed: React.FC<TimelineFeedProps> = ({
             return (
               <div
                 key={log.id}
-                className="bg-white rounded-2xl sm:rounded-3xl p-4.5 sm:p-5 shadow-sm hover:shadow-md border border-emerald-100/90 hover:border-emerald-300 transition-all space-y-3.5 relative overflow-hidden"
+                className={`rounded-2xl sm:rounded-3xl p-4.5 sm:p-5 shadow-sm hover:shadow-md transition-all space-y-3.5 relative overflow-hidden border ${
+                  log.isDeleted
+                    ? 'bg-rose-50/40 border-rose-200'
+                    : 'bg-white border-emerald-100/90 hover:border-emerald-300'
+                }`}
               >
+                {/* Deleted Badge Header */}
+                {log.isDeleted && (
+                  <div className="bg-rose-100/80 border border-rose-200 text-rose-800 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <span>⚠️</span>
+                      <span>
+                        {currentUserName && log.userName === currentUserName
+                          ? '您发布的此动态已被隐藏/删除（对其他成员不可见）'
+                          : '此动态已被管理员删除（已从前台隐藏）'}
+                      </span>
+                    </span>
+                    <span className="text-[10px] bg-rose-200 text-rose-900 px-2 py-0.5 rounded-md">已隐藏</span>
+                  </div>
+                )}
+
                 {/* Header: User Avatar, Name, Location */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
@@ -293,8 +388,8 @@ export const TimelineFeed: React.FC<TimelineFeedProps> = ({
                   </div>
                 )}
 
-                {/* Like & Comment Bar */}
-                <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs text-gray-500">
+                {/* Like & Comment Bar & Admin Post Management */}
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100 text-xs text-gray-500 flex-wrap gap-2">
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => handleLike(log.id)}
@@ -317,24 +412,83 @@ export const TimelineFeed: React.FC<TimelineFeedProps> = ({
                     </button>
                   </div>
 
-                  {log.likes.length > 0 && (
-                    <span className="text-[11px] text-gray-400 truncate max-w-[180px]">
-                      ❤️ {log.likes.map(l => l.userName).join('、')} 觉得很棒
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {/* Author or Admin Log Controls */}
+                    {(() => {
+                      const isMyLog = Boolean(currentUserName && log.userName && currentUserName.trim() === log.userName.trim());
+                      const canManageLog = isAdmin || isMyLog;
+                      if (!canManageLog) return null;
+
+                      return (
+                        <div className="flex items-center gap-1.5">
+                          {!log.isDeleted ? (
+                            <button
+                              onClick={() => handleSoftDeleteLog(log.id, isMyLog && !isAdmin)}
+                              className="flex items-center gap-1 px-2 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold transition-colors border border-rose-100"
+                              title={isMyLog && !isAdmin ? "删除/隐藏我的这条动态" : "管理员删除此动态"}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>{isMyLog && !isAdmin ? '删除动态' : '删除动态'}</span>
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handleRestoreLog(log.id)}
+                                className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold transition-colors"
+                                title="恢复此动态"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>恢复</span>
+                              </button>
+                              <button
+                                onClick={() => handlePermanentDeleteLog(log.id)}
+                                className="flex items-center gap-1 px-2 py-1 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-bold transition-colors"
+                                title="彻底删除"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>彻底删除</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {log.likes.length > 0 && (
+                      <span className="text-[11px] text-gray-400 truncate max-w-[150px]">
+                        ❤️ {log.likes.map(l => l.userName).join('、')} 觉得很棒
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Expanded Comments Section */}
                 {isCommentsExpanded && (
                   <div className="bg-gray-50/80 rounded-xl p-3 space-y-2.5 border border-gray-100 animate-in fade-in duration-200">
                     {log.comments.length > 0 ? (
-                      <div className="space-y-1.5">
-                        {log.comments.map(c => (
-                          <div key={c.id} className="text-xs leading-relaxed">
-                            <span className="font-bold text-gray-900 mr-1.5">{c.userName}:</span>
-                            <span className="text-gray-700">{c.text}</span>
-                          </div>
-                        ))}
+                      <div className="space-y-2">
+                        {log.comments.map(c => {
+                          const canDeleteComment = isAdmin || (currentUserName && currentUserName === c.userName);
+
+                          return (
+                            <div key={c.id} className="text-xs leading-relaxed flex items-center justify-between group bg-white/70 p-2 rounded-lg border border-gray-100">
+                              <div>
+                                <span className="font-bold text-gray-900 mr-1.5">{c.userName}:</span>
+                                <span className="text-gray-700">{c.text}</span>
+                              </div>
+                              {canDeleteComment && (
+                                <button
+                                  onClick={() => handleDeleteComment(log.id, c.id)}
+                                  className="text-gray-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-all text-[11px] flex items-center gap-0.5 shrink-0 ml-2"
+                                  title="删除此条评论"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  <span>删除</span>
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     ) : (
                       <p className="text-[11px] text-gray-400">暂无评论，发表一条温暖的评论吧~</p>
