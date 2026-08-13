@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plant, CareLog, UserProfile, StatsData, SystemConfig } from './types';
-import { fetchPlants, fetchLogs, fetchStats, claimPlant, fetchSystemConfig } from './lib/api';
+import { fetchPlants, fetchLogs, fetchStats, claimPlant, fetchSystemConfig, subscribePlants, subscribeLogs, subscribeConfig } from './lib/api';
 import { Header } from './components/Header';
 import { BottomNav, TabType } from './components/BottomNav';
 import { TimelineFeed } from './components/TimelineFeed';
@@ -13,6 +13,7 @@ import { UserProfileModal } from './components/UserProfileModal';
 import { PlantDetailModal } from './components/PlantDetailModal';
 import { TransferModal } from './components/TransferModal';
 import { ImageLightboxModal } from './components/ImageLightboxModal';
+import { AppVersionModal } from './components/AppVersionModal';
 import { RefreshCw, AlertCircle, ShieldCheck } from 'lucide-react';
 
 export default function App() {
@@ -44,6 +45,7 @@ export default function App() {
   // Active Modals
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
   const [transferringPlant, setTransferringPlant] = useState<Plant | null>(null);
 
   const [selectedPlantIdForLog, setSelectedPlantIdForLog] = useState<number | undefined>(undefined);
@@ -89,11 +91,27 @@ export default function App() {
     }
   }, []);
 
-  // Initial Load & Auto Refresh (Every 5 seconds background refresh)
+  // Initial Load & Real-Time Firestore Synchronization across all devices/platforms
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 5000);
-    return () => clearInterval(interval);
+
+    const unsubPlants = subscribePlants(data => {
+      if (Array.isArray(data) && data.length > 0) setPlants(data);
+    });
+    const unsubLogs = subscribeLogs(data => {
+      if (Array.isArray(data) && data.length > 0) setLogs(data);
+    });
+    const unsubConfig = subscribeConfig(cfg => {
+      if (cfg) setSystemConfig(cfg);
+    });
+
+    const interval = setInterval(loadData, 10000);
+    return () => {
+      unsubPlants();
+      unsubLogs();
+      unsubConfig();
+      clearInterval(interval);
+    };
   }, [loadData]);
 
   const hasHandledUrlRef = useRef(false);
@@ -164,8 +182,31 @@ export default function App() {
       setIsUserModalOpen(true);
       return;
     }
-    const defaultPid = plantId || (currentUser.plantIds && currentUser.plantIds.length > 0 ? currentUser.plantIds[0] : (plants[0]?.id || 1));
-    setSelectedPlantIdForLog(defaultPid);
+
+    const isUserAdmin = Boolean(currentUser.isAdmin || currentUser.name.trim().toLowerCase() === 'admin');
+    const userOwnedPlants = plants.filter(p => p && (p.ownerName === currentUser.name || (Array.isArray(p.owners) && p.owners.includes(currentUser.name))));
+
+    if (!isUserAdmin && userOwnedPlants.length === 0) {
+      alert(`⚠️ 您好【${currentUser.name}】，您目前尚未认领绑定任何辣椒植株，无法直接进行护理打卡！\n\n请先在【植物列表】中点击“认领该植株”成为认领人。`);
+      setActiveTab('PLANTS');
+      return;
+    }
+
+    let targetPid = plantId;
+    if (targetPid) {
+      const targetPlant = plants.find(p => p.id === targetPid);
+      if (targetPlant && !isUserAdmin) {
+        const isOwner = targetPlant.ownerName === currentUser.name || (Array.isArray(targetPlant.owners) && targetPlant.owners.includes(currentUser.name));
+        if (!isOwner) {
+          alert(`⚠️ 【${targetPlant.code}】属于 ${targetPlant.ownerName ? `同事【${targetPlant.ownerName}】` : '待认领状态'}，您尚未绑定认领该植株，无法直接为其打卡！`);
+          return;
+        }
+      }
+    } else {
+      targetPid = userOwnedPlants[0]?.id || plants[0]?.id || 1;
+    }
+
+    setSelectedPlantIdForLog(targetPid);
     setSelectedActionTypeForLog(actionType);
     setIsLogModalOpen(true);
   };
@@ -209,6 +250,7 @@ export default function App() {
       <Header
         currentUser={currentUser}
         onOpenUserModal={() => setIsUserModalOpen(true)}
+        onOpenVersionModal={() => setIsVersionModalOpen(true)}
         onRefreshData={loadData}
         onLogout={handleLogout}
         onGoAdmin={() => setActiveTab('ADMIN')}
@@ -261,6 +303,7 @@ export default function App() {
                 logs={logs}
                 plants={plants}
                 currentUserName={currentUser?.name || ''}
+                currentUser={currentUser}
                 onRefresh={loadData}
                 onOpenPlantDetail={handleOpenPlantDetail}
                 onQuickLog={handleQuickLog}
@@ -338,6 +381,7 @@ export default function App() {
         defaultActionType={selectedActionTypeForLog}
         onPreviewImage={handlePreviewImage}
         actionTypesConfig={systemConfig?.actionTypes}
+        onGoToClaimPlants={() => setActiveTab('PLANTS')}
       />
 
       <UserProfileModal
@@ -345,6 +389,11 @@ export default function App() {
         onClose={() => setIsUserModalOpen(false)}
         currentUser={currentUser}
         onUserSaved={handleUserSaved}
+      />
+
+      <AppVersionModal
+        isOpen={isVersionModalOpen}
+        onClose={() => setIsVersionModalOpen(false)}
       />
 
       <PlantDetailModal
