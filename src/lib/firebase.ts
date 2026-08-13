@@ -1,7 +1,2 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
-
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId || '(default)');
+// Firebase has been removed — all data now flows through Cloudflare Worker API (same domain /api/*)
+// This file is kept as an empty stub to avoid import errors from any leftover references.
