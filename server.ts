@@ -580,6 +580,22 @@ app.post('/api/logs', (req, res) => {
   }
 
   const db = loadDB();
+
+  // 校验打卡者权限：非管理员账号必须属于该植株的认领人或共同养护人
+  const isServerAdmin = userName.trim().toLowerCase() === 'admin';
+  if (!isServerAdmin) {
+    const userOwnedPlantIds = db.plants
+      .filter(p => p.ownerName === userName || (Array.isArray(p.owners) && p.owners.includes(userName)))
+      .map(p => p.id);
+
+    const mainPlantId = Number(plantIds[0]);
+    if (!userOwnedPlantIds.includes(mainPlantId)) {
+      return res.status(403).json({
+        success: false,
+        message: `无护理打卡权限：您尚未绑定认领 ${mainPlantId}# 植株，无法直接提交日志！请先前往认领该植株。`
+      });
+    }
+  }
   const actionIcons: Record<string, string> = {
     '浇水': '💧',
     '施肥': '🧪',
