@@ -6,6 +6,7 @@ interface HeaderProps {
   currentUser: UserProfile | null;
   onOpenUserModal: () => void;
   onRefreshData: () => void;
+  onOpenVersionModal?: () => void;
   onLogout?: () => void;
   onGoAdmin?: () => void;
   isAdmin?: boolean;
@@ -15,6 +16,7 @@ export const Header: React.FC<HeaderProps> = ({
   currentUser,
   onOpenUserModal,
   onRefreshData,
+  onOpenVersionModal,
   onLogout,
   onGoAdmin,
   isAdmin,
@@ -24,19 +26,30 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-emerald-100 shadow-2xs">
       <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
-        {/* Logo & App Name */}
-        <div className="flex items-center gap-2.5">
-          <img 
-            src="/nong-xiao-wa.svg" 
-            alt="农小蛙" 
-            className="w-10 h-10 rounded-xl object-contain shadow-xs shrink-0 bg-white p-0.5 border border-emerald-100" 
-          />
-          <div>
-            <h1 className="font-extrabold text-gray-900 text-lg leading-tight flex items-center gap-1.5">
-              小蛙种植记（内部自用）
-            </h1>
+        {/* Logo & App Name (Click to view App Version Modal) */}
+        <button
+          onClick={onOpenVersionModal}
+          title="点击查看应用版本号与更新日志"
+          className="flex items-center gap-2.5 text-left group cursor-pointer focus:outline-hidden"
+        >
+          <div className="relative">
+            <img 
+              src="/nong-xiao-wa.svg" 
+              alt="小蛙应用头像" 
+              className="w-10 h-10 rounded-xl object-contain shadow-xs shrink-0 bg-white p-0.5 border border-emerald-100 group-hover:scale-105 group-active:scale-95 transition-transform" 
+            />
+            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border border-white" />
           </div>
-        </div>
+          <div>
+            <h1 className="font-extrabold text-gray-900 text-lg leading-tight flex items-center gap-1.5 group-hover:text-emerald-700 transition-colors">
+              <span>小蛙种植记</span>
+              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-md border border-emerald-200 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                v2.5.0
+              </span>
+            </h1>
+            <p className="text-[10px] text-gray-400 group-hover:text-emerald-600 transition-colors font-medium">内部自用 · 点击看版本更新</p>
+          </div>
+        </button>
 
         {/* Action Controls */}
         <div className="flex items-center gap-2">
