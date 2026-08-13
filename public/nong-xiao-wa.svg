@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <defs>
+    <!-- Eye Ring Gradient -->
+    <linearGradient id="eyeRingGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff9800"/>
+      <stop offset="35%" stop-color="#ffd54f"/>
+      <stop offset="100%" stop-color="#ffee58"/>
+    </linearGradient>
+
+    <!-- Text Outline Filter / Style -->
+    <filter id="whiteGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feMorphology operator="dilate" radius="5" in="SourceAlpha" result="expanded"/>
+      <feFlood flood-color="#ffffff" result="white"/>
+      <feComposite in="white" in2="expanded" operator="in" result="outline"/>
+      <feMerge>
+        <feMergeNode in="outline"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Outer Dark Blue Badge Circle -->
+  <circle cx="250" cy="250" r="235" fill="#003e8c" />
+  <!-- Inner White Background -->
+  <circle cx="250" cy="250" r="205" fill="#ffffff" />
+
+  <!-- Frog Head Container -->
+  <g id="frogHead" transform="translate(0, -10)">
+    <!-- Main Green Head Base -->
+    <path d="M 100 240 C 100 130, 400 130, 400 240 C 430 280, 410 370, 250 370 C 90 370, 70 280, 100 240 Z" 
+          fill="#83ce7c" stroke="#2e7d32" stroke-width="4" />
+
+    <!-- Left Eye -->
+    <!-- Outer Yellow/Orange Ring -->
+    <circle cx="170" cy="155" r="75" fill="url(#eyeRingGrad)" stroke="#1a1a1a" stroke-width="6" />
+    <!-- Pupil -->
+    <circle cx="170" cy="155" r="52" fill="#111111" />
+    <!-- Highlight Dot -->
+    <circle cx="150" cy="135" r="14" fill="#ffffff" />
+
+    <!-- Right Eye -->
+    <!-- Outer Yellow/Orange Ring -->
+    <circle cx="330" cy="155" r="75" fill="url(#eyeRingGrad)" stroke="#1a1a1a" stroke-width="6" />
+    <!-- Pupil -->
+    <circle cx="330" cy="155" r="52" fill="#111111" />
+    <!-- Highlight Dot -->
+    <circle cx="310" cy="135" r="14" fill="#ffffff" />
+
+    <!-- Left Eyebrow -->
+    <path d="M 115 85 Q 170 30, 225 75 Q 170 50, 115 85 Z" fill="#111111" />
+    <!-- Right Eyebrow -->
+    <path d="M 385 85 Q 330 30, 275 75 Q 330 50, 385 85 Z" fill="#111111" />
+
+    <!-- Rosy Pink Cheeks -->
+    <!-- Left Cheek -->
+    <ellipse cx="120" cy="290" rx="42" ry="32" fill="#ff6b7a" opacity="0.9" />
+    <!-- Right Cheek -->
+    <ellipse cx="380" cy="290" rx="42" ry="32" fill="#ff6b7a" opacity="0.9" />
+
+    <!-- Smile Mouth -->
+    <path d="M 165 270 Q 250 340, 335 270" fill="none" stroke="#111111" stroke-width="7" stroke-linecap="round" />
+    <!-- Left Smile Dimple -->
+    <path d="M 160 278 L 168 262" stroke="#111111" stroke-width="6" stroke-linecap="round" />
+    <!-- Right Smile Dimple -->
+    <path d="M 340 278 L 332 262" stroke="#111111" stroke-width="6" stroke-linecap="round" />
+  </g>
+
+  <!-- Text & Logo Banner at Bottom -->
+  <g transform="translate(250, 430)">
+    <!-- White backing outline for text -->
+    <path d="M -150 -60 L 150 -60 L 170 15 L -170 15 Z" fill="#ffffff" opacity="0.01"/>
+    
+    <!-- Custom Styled SVG Text: 农小蛙 -->
+    <text x="0" y="0" 
+          font-family="system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif" 
+          font-weight="900" 
+          font-size="78" 
+          text-anchor="middle" 
+          fill="#1f1f1f" 
+          stroke="#ffffff" 
+          stroke-width="12" 
+          paint-order="stroke fill"
+          letter-spacing="2">农小蛙</text>
+
+    <!-- Leaf on "农" character -->
+    <path d="M -92 -48 C -105 -62, -85 -65, -78 -50 C -75 -40, -88 -38, -92 -48 Z" fill="#66bb6a" stroke="#ffffff" stroke-width="2"/>
+
+    <!-- Registered ® Symbol -->
+    <text x="110" y="-42" font-family="sans-serif" font-weight="bold" font-size="28" fill="#1f1f1f" stroke="#ffffff" stroke-width="4" paint-order="stroke fill">®</text>
+  </g>
+</svg>
