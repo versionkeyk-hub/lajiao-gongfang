@@ -41,6 +41,7 @@ export const PlantDetailModal: React.FC<PlantDetailModalProps> = ({
 
   // Filter care logs for this plant with flexible ID/code matching
   const plantLogs = logs.filter(l => 
+    !l.isDeleted &&
     l.plantIds && Array.isArray(l.plantIds) && l.plantIds.some(pid => 
       pid === plant.id || 
       String(pid) === String(plant.id) || 
